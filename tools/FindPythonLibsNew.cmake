@@ -147,10 +147,12 @@ string(REGEX REPLACE "\\\\" "/" PYTHON_PREFIX "${PYTHON_PREFIX}")
 string(REGEX REPLACE "\\\\" "/" PYTHON_INCLUDE_DIR "${PYTHON_INCLUDE_DIR}")
 string(REGEX REPLACE "\\\\" "/" PYTHON_SITE_PACKAGES "${PYTHON_SITE_PACKAGES}")
 
-if(CMAKE_HOST_WIN32 AND NOT (MINGW AND DEFINED ENV{MSYSTEM}))
+if(CMAKE_HOST_WIN32)
     message(STATUS "Windows!!!!")
     set(PYTHON_LIBRARY
         "${PYTHON_PREFIX}/libs/python${PYTHON_LIBRARY_SUFFIX}.lib")
+    message(STATUS "PYTHON_LIBRARY=${PYTHON_LIBRARY}")
+    message(STATUS "PYTHON_LIBDIR=${PYTHON_LIBDIR}")
 
     # when run in a venv, PYTHON_PREFIX points to it. But the libraries remain in the
     # original python installation. They may be found relative to PYTHON_INCLUDE_DIR.
@@ -159,6 +161,23 @@ if(CMAKE_HOST_WIN32 AND NOT (MINGW AND DEFINED ENV{MSYSTEM}))
         set(PYTHON_LIBRARY
             "${_PYTHON_ROOT}/libs/python${PYTHON_LIBRARY_SUFFIX}.lib")
     endif()
+    message(STATUS "PYTHON_LIBRARY=${PYTHON_LIBRARY}")
+
+    # if we are in MSYS, and we didn't find windows python lib, look for system python lib
+    if((DEFINED ENV{MSYSTEM}) AND (NOT EXISTS "${PYTHON_LIBRARY}"))
+        if(PYTHON_MULTIARCH)
+            set(_PYTHON_LIBS_SEARCH "${PYTHON_LIBDIR}/${PYTHON_MULTIARCH}" "${PYTHON_LIBDIR}")
+        else()
+            set(_PYTHON_LIBS_SEARCH "${PYTHON_LIBDIR}")
+        endif()
+        message(STATUS "_PYTHON_LIBS_SEARCH=${_PYTHON_LIBS_SEARCH}")
+        unset(PYTHON_LIBRARY)
+        find_library(PYTHON_LIBRARY
+            NAMES "python${PYTHON_LIBRARY_SUFFIX}"
+            PATHS ${_PYTHON_LIBS_SEARCH}
+            NO_DEFAULT_PATH)
+    endif()
+    message(STATUS "PYTHON_LIBRARY=${PYTHON_LIBRARY}")
 
     # raise an error if the python libs are still not found.
     if(NOT EXISTS "${PYTHON_LIBRARY}")
@@ -179,19 +198,6 @@ else()
         NAMES "python${PYTHON_LIBRARY_SUFFIX}"
         PATHS ${_PYTHON_LIBS_SEARCH}
         NO_DEFAULT_PATH)
-
-    # If we didn't find a python lib, and we are on WIN32 (and therefore also MSYS and MINGW), 
-    # it could be that there is no (MSYS) system python, so try windows python
-    if(NOT PYTHON_LIBRARY AND CMAKE_HOST_WIN32)
-        message(STATUS "Looking for windows python: ${PYTHON_PREFIX}/libs/python${PYTHON_LIBRARY_SUFFIX}.lib")
-        set(TEMP_PYTHON_LIBRARY
-            "${PYTHON_PREFIX}/libs/python${PYTHON_LIBRARY_SUFFIX}.lib")
-        if(EXISTS "${TEMP_PYTHON_LIBRARY}")
-            message(STATUS "Found windows python: ${TEMP_PYTHON_LIBRARY}")
-            set(PYTHON_LIBRARY "${TEMP_PYTHON_LIBRARY}")
-        endif()
-        unset(TEMP_PYTHON_LIBRARY)
-    endif()
 
     # If all else fails, just set the name/version and let the linker figure out the path.
     if(NOT PYTHON_LIBRARY)
