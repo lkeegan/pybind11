@@ -160,7 +160,7 @@ if(CMAKE_HOST_WIN32)
     endif()
 
     # if we are in MSYS, and we didn't find windows python lib, look for system python lib
-    if(DEFINED ENV{MSYSTEM} AND NOT EXISTS "${PYTHON_LIBRARY}")
+    if(DEFINED ENV{MSYSTEM} AND MINGW AND NOT EXISTS "${PYTHON_LIBRARY}")
         if(PYTHON_MULTIARCH)
             set(_PYTHON_LIBS_SEARCH "${PYTHON_LIBDIR}/${PYTHON_MULTIARCH}" "${PYTHON_LIBDIR}")
         else()
